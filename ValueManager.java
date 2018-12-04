@@ -6,69 +6,87 @@ import java.util.Scanner;
 
 public class ValueManager {
 	
-	public RandomAccessFile val;
-	public long numRecords;
+	private RandomAccessFile values;
+	private long numRecords;
 	
-	public ValueManager() {}
-		
-	public ValueManager( String name ) {
-				
-		File f = new File(name);
-		
-		if (f.exists() && !f.isDirectory()) {
-			
-			System.out.println( "File exists" );
-			
-			try {
-				val = new RandomAccessFile( name , "rwd" );
-				try {
-					numRecords = val.readLong();
-				} catch (IOException e) {
-					numRecords = 0;
-				}
-			} catch ( FileNotFoundException fnfe ) {} 
-		}
-
-		else
-		{
-			try {
-				val = new RandomAccessFile(name, "rwd");
-				numRecords = 0;
-			} catch (IOException e) {}
-		}
-	}
+	private final int LENGTH_OF_STR_LENGTH = 2; // the length of the string
+	private final int MAX_LENGTH_OF_ENTRY = 256; // the actual entry length
+	private final int COMPLETE_ENTRY = LENGTH_OF_STR_LENGTH + MAX_LENGTH_OF_ENTRY;
 	
-	public long insert( String value ) {
+	public ValueManager( String name ) throws FileNotFoundException , IOException {
 		
-		long index = 0;
-
-		String in[] = value.split(" ", 2);
+		// check if "data.val" or otherwise named value file exists
+		File f = new File( name );
 		
-		System.out.println( " --> in method insert( long key, String value ), with key = " + in[0] + " and value = " + in[1]);
-				
-		try {
-			val.seek( 8 + 256 * numRecords );
-			val.writeByte( in[1].length() );
-			val.writeBytes( in[1] );
-			numRecords++;
-			val.seek(0);
-			val.writeLong(numRecords);
-		} catch ( IOException e ) {
-			System.out.println( "IOException in insert method" );
+		if ( !f.exists() ) {
+			
+			values = new RandomAccessFile( "data.bt" , "rwd" );
+			numRecords = 0;
+			values.writeLong( numRecords );
+			
+		} else {
+			
+			values = new RandomAccessFile( f , "rwd" );
+			values.seek( 0 );
+			numRecords = values.readLong();
+			
 		}
-		
-		return index;
 		
 	}
 	
-	public void close() {
+	public void insert( String value ) throws IOException {
+		
+		values.seek( 8 + numRecords * COMPLETE_ENTRY );
+		
+		values.writeShort( value.length() ); // googled max value of byte - got 127 so changed byte to short to accommodate possible greaters lengths (128-256)
+		values.writeBytes( value );
+		
+		// increment number of records ( offset ) and update .val
+		numRecords++;
+		values.seek( 0 );
+		values.writeLong( numRecords );
+		
+	}
+	
+	public String read( long offset ) throws IOException {
+		
+		values.seek( 8 + offset * COMPLETE_ENTRY );
+		short length = values.readShort();
+		
+		// https://stackoverflow.com/questions/33780798/java-how-to-read-from-randomaccessfile-into-string
+		byte[] entry = new byte[ length ];
+		values.read( entry );
+		String output = new String( entry , "UTF8" );
+		
+		return output;
+		
+	}
+	
+	public void update( String newEntry , long offset ) throws IOException {
+		
+		values.seek( 8 + offset * COMPLETE_ENTRY );
+		values.writeShort( newEntry.length() );
+		values.writeBytes( newEntry );
+		
+	}
+	
+	public void writeNumRecords() {
 		
 		try {
-			val.close();
+			values.seek( 0 );
+			values.writeLong( numRecords );
 		} catch ( IOException e ) {
-			System.out.println( "IOException in close method" );
+			System.out.println( "IOException in writeNumRecords method" );
 		}
 		
+	}
+	
+	public long getNumRecords() {
+		return numRecords;
+	}
+	
+	public void close() throws IOException {
+		values.close();
 	}
 	
 }
