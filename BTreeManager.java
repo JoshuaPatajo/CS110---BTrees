@@ -3,23 +3,23 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Scanner;
-import java.util.ArrayList;
 
 public class BTreeManager {
 	
 	private RandomAccessFile btree;
 	private long nodeCount;
-	private ArrayList< Node > actualbtree = new ArrayList< Node >();
+	private long rootNodePos;
 	
-	private final static long ORDER = 5;
+	private final int ORDER = 5;
+	private final int NODE_LENGTH = 3 * ORDER - 1; // I did the math
 	
 	public BTreeManager() {}
 	
-	public BTreeManager( String name ) throws IOException {
+	public BTreeManager( String name ) throws FileNotFoundException , IOException {
 		
 		File f = new File( name );
 		
-		if ( f.exists() && !f.isDirectory() ) {
+		if ( f.exists() ) {
 			
 			// File exists
 			try {
@@ -27,6 +27,7 @@ public class BTreeManager {
 				btree = new RandomAccessFile( f , "rwd" );
 				btree.seek( 0 );
 				nodeCount = btree.readLong();
+				rootNodePos = btree.readLong();
 				
 			} catch ( FileNotFoundException fnfe ) {
 				System.out.println( "FileNotFoundException in BTreeManager constructor (File exists)" );
@@ -36,18 +37,11 @@ public class BTreeManager {
 		else {
 			
 			// File does not exist
-			try {
-				
-				btree = new RandomAccessFile( name , "rwd" );
-				nodeCount = 1;
-				btree.seek( 0 );
-				btree.writeLong( nodeCount );
-				btree.writeLong( -1 );
-				btree.writeLong( -1 );
-				
-			} catch ( FileNotFoundException fnfe ) {
-				System.out.println( "FileNotFoundException in BTreeManager constructor (File does not exist)" );
-			}
+			btree = new RandomAccessFile( name , "rwd" );
+			nodeCount = 1;
+			btree.seek( 0 );
+			btree.writeLong( nodeCount );
+			btree.writeLong( 16 );
 			
 		}
 		
@@ -55,33 +49,12 @@ public class BTreeManager {
 	
 	public void insert( long key , long offset ) throws IOException {
 		
-		/* long testK = key;
+		// find the correct position to place the new key
+		long currentNodePos = rootNodePos;
 		
-		for ( int i = 0 ; i < ORDER ; i++ ) {
-			
-			btree.seek( ( 2 + 3 * i ) * 8 );
-			
-			long temp = btree.readLong();
-			
-			if ( temp > testK ) {
-				
-				testK = temp;
-				btree.writeLong( key );
-				
-				
-				btree.seek( ( 2 + 3 * i ) * 8 + 1 );
-				
-				long offsetN = btree.readLong();
-				
-				btree.writeLong( offset );
-				
-			}
-			
-		} */
+		btree.seek( currentNodePos + 16 ); // position of first child of root node
 		
-		// find the correct node to place the new key
-		
-		// find the correct position in the node to place the new key
+		long keyToCompare = btree.readLong();
 		
 		// place new key
 		
@@ -103,10 +76,10 @@ public class BTreeManager {
 		/* private final int ARRAYLENGTH = 1 + ORDER + 2 * ( ORDER - 1 );
 		// 1 for the parent, ORDER for the children, 2 * ( ORDER - 1 ) for the keys and offsets
 		long[] array; // combination of the simpler three */
-		long[] children;
+		Node parent;
+		Node[] children;
 		long[] keys;
 		long[] offsets;
-		Node parent;
 		
 		public Node() {
 			

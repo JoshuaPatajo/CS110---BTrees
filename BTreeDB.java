@@ -6,60 +6,131 @@ import java.util.Scanner;
 
 public class BTreeDB {
 	
-	public static RandomAccessFile bt;
-	public static RandomAccessFile val;
 	public static boolean exit;
+	private static long recordNumber = 0;
+	private static BTreeManager btm;
+	private static ValueManager vm;
 	
 	public static void main( String[] args ) throws FileNotFoundException, IOException {
 		
-		bt = new RandomAccessFile(args[0], "rwd");
-
-		ValueManager vm = new ValueManager( args[1] );
-				
-		while ( exit != true ) {
-			acceptCommands(vm);
-		}
-	}
+		// have the BTM open the .bt
+		btm = new BTreeManager( args[0] );
 		
-	public static void acceptCommands( ValueManager vm ) {
+		// have VM open the .val
+		vm = new ValueManager( args[1] );
 		
 		Scanner sc = new Scanner( System.in );
 		
-		String s = sc.nextLine();
-		String[] com = s.split( " " , 2 );
-
-		//If there an input error
-		try {
-
-		} catch (IOException e) {
-
-		}
-		
-		if ( com.length == 1 && !com[0].equals( "exit" ) )
-			System.out.println( "ERROR: invalid command" );
-		else if ( com[0].equals( "insert" ) ) {
-			vm.insert( com[1] );
-		}
-		else if ( com[0].equals( "update" ) ) {
-			update( Long.parseLong( com[1] ) );
-		}
-		else if ( com[0].equals( "select" ) ) {
-			select( Long.parseLong( com[1] ) );
-		}
-		else {
-			exit = true;
+		while ( exit != true ) {
+			acceptCommands( sc.nextLine() );
 		}
 		
 	}
 	
-	public static void update( long key ) {
+	public static void acceptCommands( String s ) throws IOException {
 		
-		System.out.printf( " --> in method update( long key , String value ), with key = %d and value = n" , key );
+		String command = ""; // Expected values: insert , update , select , exit ( , delete )
+		long key = 0;
+		String value = ""; // May also contain spaces
 		
-	}
-	public static void select( long key ) {
+		String[] com = s.split( " " , 2 );
+		// Splits line of input along first space - isolates command
 		
-		System.out.printf( " --> in method select( long key ), with key = %d\n" , key );
+		String command = com[0];
+		// If command != exit, com[1] should contain the key, and if command != select, com[1] must also contain an entry
+		
+		if ( command.equals( "exit" ) ) {
+			exit = true;
+		}
+		else if ( command.equals( "select" ) ) {
+			
+			// check for key
+			
+			try {
+				key = Long.parseLong( com[1] );
+			} catch ( NumberFormatException e ) {
+				
+				// if "key" isn't a valid long, indicate error and proceed to next input
+				System.out.println( " > ERROR: Invalid key" );
+				return;
+			}
+			
+			long offset = btm.select( key ); // is set to -1 if offset key does not have associated entry
+			
+			if ( offset >= 0 ) {
+				System.out.println( vm.read( offset ) );
+			} else {
+				System.out.println( " > ERROR: key is empty" );
+			}
+			
+		}
+		else if ( command.equals( "insert" ) ) {
+			
+			String[] com2 = com[1].split( " " , 2 );
+			// Splits "key ent ry" to "key" and "ent ry"
+			
+			try {
+				key = Long.parseLong( com2[0] );
+			} catch ( NumberFormatException e ) {
+				
+				// if "key" isn't a valid long, indicate error and proceed to next input
+				System.out.println( " > ERROR: Invalid key" );
+				return;
+			}
+			
+			// Note: btm.select( key ) returns the ValOffset of the entry at given key, default value is -1 if the entry does not exist
+			if ( btm.select( key ) >= 0 ) { // i.e. key is not empty
+				System.out.println( " > ERROR: Key is not empty" );
+			} else {
+				
+				try {
+					value = com2[1];
+				} catch ( NullPointerException e ) {
+					System.out.println( " > ERROR: Invalid entry" );
+					return;
+				}
+				
+				vm.insert( value );
+				btm.insert( key , vm.getNumRecords() );
+				
+			}
+			
+		}
+		else if ( command.equals( "update" ) ) {
+			
+			try {
+				key = Long.parseLong( com[1] );
+			} catch ( NumberFormatException e ) {
+				
+				// if "key" isn't a valid long, indicate error and proceed to next input
+				System.out.println( " > ERROR: Invalid key" );
+				return;
+			}
+			
+			if ( btm.select( key ) == -1 ) { // i.e. key is empty
+				System.out.println( " > ERROR: Key is empty" );
+			} else {
+				
+				try {
+					value = com2[1];
+				} catch ( NullPointerException e ) {
+					System.out.println( " > ERROR: Invalid entry" );
+					return;
+				}
+				
+				vm.update( value );
+				btm.update( key , vm.getNumRecords() );
+				
+			}
+			
+		}
+		/* // uncomment if deletion is implemented
+		else if ( command.equals( "remove" ) {
+			
+		} */
+		else {
+			System.out.println( " > ERROR: invalid command" );
+		}
 		
 	}
 	
