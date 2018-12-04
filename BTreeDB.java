@@ -33,11 +33,17 @@ public class BTreeDB {
 		long key = 0;
 		String value = ""; // May also contain spaces
 		
-		String[] com = s.split( " " , 2 );
+		String[] com = new String[2];
+		
+		try {
+			com = s.split( " " , 2 );
+			command = com[0];
+			// If command != exit, com[1] should contain the key, and if command != select, com[1] must also contain an entry
+		} catch ( ArrayIndexOutOfBoundsException e ) {
+			command = s;
+		}
 		// Splits line of input along first space - isolates command
 		
-		String command = com[0];
-		// If command != exit, com[1] should contain the key, and if command != select, com[1] must also contain an entry
 		
 		if ( command.equals( "exit" ) ) {
 			exit = true;
@@ -52,6 +58,9 @@ public class BTreeDB {
 				
 				// if "key" isn't a valid long, indicate error and proceed to next input
 				System.out.println( " > ERROR: Invalid key" );
+				return;
+			} catch ( ArrayIndexOutOfBoundsException e ) {
+				System.out.println( " > ERROR: Key not specified" );
 				return;
 			}
 			
@@ -69,12 +78,16 @@ public class BTreeDB {
 			String[] com2 = com[1].split( " " , 2 );
 			// Splits "key ent ry" to "key" and "ent ry"
 			
+			// Processes key from input, if there is an error with the key, it does not proceed with insertion
 			try {
 				key = Long.parseLong( com2[0] );
 			} catch ( NumberFormatException e ) {
 				
 				// if "key" isn't a valid long, indicate error and proceed to next input
 				System.out.println( " > ERROR: Invalid key" );
+				return;
+			} catch ( ArrayIndexOutOfBoundsException e ) {
+				System.out.println( " > ERROR: Key not specified" );
 				return;
 			}
 			
@@ -98,6 +111,8 @@ public class BTreeDB {
 		}
 		else if ( command.equals( "update" ) ) {
 			
+			String[] com2 = com[1].split( " " , 2 );
+			
 			try {
 				key = Long.parseLong( com[1] );
 			} catch ( NumberFormatException e ) {
@@ -118,7 +133,7 @@ public class BTreeDB {
 					return;
 				}
 				
-				vm.update( value );
+				vm.update( value , key );
 				btm.update( key , vm.getNumRecords() );
 				
 			}
