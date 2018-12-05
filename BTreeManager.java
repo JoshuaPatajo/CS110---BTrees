@@ -72,8 +72,6 @@ public class BTreeManager {
 	
 	class Node
 	{
-		private final int ORDER = 5;
-
 		long parent;
 		long[] child = new long[ORDER];
 		long[] key = new long[ORDER - 1];
@@ -233,7 +231,32 @@ public class BTreeManager {
 			parent = p;
 		}
 	}
-	
+
+	public long select(long k)
+	{
+		for(int i = 0; i < ORDER - 1; i++)
+		{
+			if(key[i] == k)
+				return offset[i];
+			else if(key[i] > k)
+			{
+				if(child[i] != -1)
+					return childNode[i].select(k);
+				else
+					return -1;
+			}
+			else
+			{
+				if(i == ORDER - 2)
+				{
+					if(child[ORDER - 1] == -1)
+						return -1;
+					else
+						return childNode[ORDER - 1].select(k);
+				}
+			}
+		}
+	}
 }
 
 /* class Node {
