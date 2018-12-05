@@ -20,7 +20,7 @@ public class ValueManager {
 		
 		if ( !f.exists() ) {
 			
-			values = new RandomAccessFile( "data.bt" , "rwd" );
+			values = new RandomAccessFile( "data.val" , "rwd" );
 			numRecords = 0;
 			values.writeLong( numRecords );
 			
@@ -50,7 +50,8 @@ public class ValueManager {
 	
 	public String read( long offset ) throws IOException {
 		
-		values.seek( 8 + offset * COMPLETE_ENTRY );
+		// values.seek( 8 + offset * COMPLETE_ENTRY );
+		values.seek( offset );
 		short length = values.readShort();
 		
 		// https://stackoverflow.com/questions/33780798/java-how-to-read-from-randomaccessfile-into-string

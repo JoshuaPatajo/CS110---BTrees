@@ -12,6 +12,7 @@ public class BTreeManager {
 	
 	private final int ORDER = 5;
 	private final int NODE_LENGTH = 3 * ORDER - 1; // I did the math
+	public Node root = new Node(16);
 	
 	public BTreeManager() {}
 	
@@ -46,6 +47,11 @@ public class BTreeManager {
 		}
 		
 	}
+
+	public Node getRoot()
+	{
+		return root;
+	}
 	
 	public void insert( long key , long offset ) throws IOException {
 		
@@ -61,15 +67,7 @@ public class BTreeManager {
 		// adjust greater keys ( split if necessary )
 		
 	}
-	
-	public long select( long key ) {
-		
-		long offset = -1;
-		
-		return offset;
-		
-	}
-	
+
 	class Node
 	{
 		long parent;
@@ -95,6 +93,7 @@ public class BTreeManager {
 					offset[i] = os;
 					btree.seek(pos + 16 + (24 * i));
 					btree.writeLong(k);
+					btree.writeLong(os);
 					break;
 				}
 				else if(key[i] > k)
@@ -106,6 +105,7 @@ public class BTreeManager {
 					}
 					else
 					{
+						// if node is full
 						if(offset[ORDER - 2] != -1)
 						{
 							split(k, os, pos);
@@ -113,19 +113,34 @@ public class BTreeManager {
 						}
 						else
 						{
-							for(int j = ORDER - 3; j > i; j--)
-							{
-								key[j] = key[j+1];
-								offset[j] = offset[j+1];
-								child[j] = child[j+1];
-								childNode[j] = childNode[j+1];
-							}
-							key[i] = k;
-							offset[i] = os;
-							child[i] = -1;
-							childNode[i] = null;
-							btree.seek(pos + 16 + (24 * i));
-							btree.writeLong(k);
+							// // int tr;
+							// // for(int j = ORDER - 2; j > i; j++)
+							// // {
+							// // 	if(offset[j] != -1)
+							// // 	{
+							// // 		tr = j;
+							// // 		break;
+							// // 	}
+							// // }
+							
+							// for(int j = ORDER - 2; j > i; j--)
+							// {
+							// 	key[j] = key[j-1];
+							// 	offset[j] = offset[j-1];
+							// 	child[j] = child[j-1];
+							// 	childNode[j] = childNode[j-1];
+							// 	btree.seek(pos + 8 + (24 * (j-1)));
+							// 	btree.writeLong(child[j-1]);
+							// 	btree.writeLong(key[j-1]);
+							// 	btree.writeLong(offset[j-1]);
+							// }
+							// key[i] = k;
+							// offset[i] = os;
+							// child[i] = -1;
+							// childNode[i] = null;
+							// btree.seek(pos + 16 + (24 * i));
+							// btree.writeLong(k);
+							// btree.writeLong(os);
 						}
 					}
 				}
@@ -191,24 +206,34 @@ public class BTreeManager {
 
 			btree.seek(0);
 			long numNodes = btree.readLong();
-			long newStart = 16 + (numNodes * 112);
+			long newStart = 16 + (numNodes * (8 * NODE_LENGTH));
 
 			childNode[0] = new Node(newStart);
 			for(int i = 0; i < ORDER/2; i++)
 				childNode[0].insert(tempKey[i], tempOS[i]);
-			childNode[0].setParent(pos);
-
-			childNode[1] = new Node(newStart + 122);
-			for(int i = (ORDER/2) + 1; i < ORDER - 1; i++)
+		
+			childNode[1] = new Node(newStart + (8 * NODE_LENGTH));
+			for(int i = (ORDER/2) + 1; i < ORDER; i++)
 				childNode[1].insert(tempKey[i], tempOS[i]);
+
+			childNode[0].setParent(pos);
 			childNode[1].setParent(pos);
 
 			reset();
+			writeReset();
 
 			key[0] = tempKey[ORDER/2];
 			offset[0] = tempOS[ORDER/2];
 			btree.seek(pos + 16);
 			btree.writeLong(key[0]);
+			btree.writeLong(offset[0]);
+			btree.seek(pos + 8);
+			btree.writeLong(newStart);
+			btree.seek(pos + 32);
+			btree.writeLong(newStart + (8 * NODE_LENGTH));
+			btree.seek(0);
+			numNodes += 2;
+			btree.writeLong(numNodes);
 		}
 
 		public void reset()
@@ -226,35 +251,49 @@ public class BTreeManager {
 			}
 		}
 
-		public void setParent(long p)
+		public void writeReset() throws IOException
+		{
+			btree.seek(pos + 8);
+
+			for(int i = 0; i < NODE_LENGTH; i++)
+				btree.writeLong(0);
+		}
+
+		public void setParent(long p) throws IOException
 		{
 			parent = p;
+			btree.seek(pos);
+			btree.writeLong(p);
 		}
-	}
 
-	public long select(long k)
-	{
-		for(int i = 0; i < ORDER - 1; i++)
+		public long select(long k)
 		{
-			if(key[i] == k)
-				return offset[i];
-			else if(key[i] > k)
+			for(int i = 0; i < ORDER - 1; i++)
 			{
-				if(child[i] != -1)
-					return childNode[i].select(k);
-				else
-					return -1;
-			}
-			else
-			{
-				if(i == ORDER - 2)
+				if(key[i] == k)
+					return offset[i];
+				else if(key[i] > k)
 				{
-					if(child[ORDER - 1] == -1)
-						return -1;
+					System.out.println("YAY");
+					if(child[i] != -1)
+						return childNode[i].select(k);
 					else
-						return childNode[ORDER - 1].select(k);
+						return -1;
+				}
+				else
+				{
+					System.out.println("E");
+					if(i == ORDER - 2)
+					{
+						if(child[ORDER - 1] == -1)
+							return -1;
+						else
+							return childNode[ORDER - 1].select(k);
+					}
 				}
 			}
+			System.out.println("Y");
+			return -1;
 		}
 	}
 }
