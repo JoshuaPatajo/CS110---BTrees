@@ -88,7 +88,6 @@ public class BTreeManager {
 		nodeList = new Node[(int)nodeCount];
 		for(int i = 0; i < nodeCount; i++)
 		{
-			System.out.println(i + ": ");
 			long pos = 16 + (i * 8 * NODE_LENGTH);
 			btree.seek(pos);
 			long[] data = new long[NODE_LENGTH];
@@ -97,7 +96,6 @@ public class BTreeManager {
 				try
 				{
 					data[j] = btree.readLong();
-					System.out.print(data[j] + " ");
 				}
 				catch (EOFException e) {}
 			}
@@ -433,8 +431,7 @@ public class BTreeManager {
 			
 			return -1;
 			
-		}
-	
+		}	
 		/**
 		 * 
 		 * Counts the number of elements in this node. Elements refers to a combination of key and offset. The maximum number a node is allowed to have is one less than the ORDER of the BTree. If the count exceeds this limit, the node is split into multiple nodes.

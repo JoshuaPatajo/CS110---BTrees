@@ -143,21 +143,21 @@ public class BTreeDB {
 				System.out.println( " > ERROR: Invalid key" );
 				return;
 			}
-			
-			if ( btm.select( key ) == -1 ) { // i.e. key is empty
-				System.out.println( " > ERROR: Key is empty" );
-				return;
-			} else {
 				
-				try {
-					value = com2[1];
-				} catch ( ArrayIndexOutOfBoundsException e ) {
-					value = "";
-				}
-				
-				vm.update( key , value );
-				
+			try {
+				value = com2[1];
+			} catch ( ArrayIndexOutOfBoundsException e ) {
+				value = "";
 			}
+			
+			long vmkey = btm.select( key );
+			if(vmkey != -1)
+			{
+				vm.update( vmkey, value );
+				System.out.println(" > " + key + " was updated");
+			}
+			else
+				System.out.println( " > ERROR: Invalid key" );
 			
 		}
 		/* // uncomment if deletion is implemented
