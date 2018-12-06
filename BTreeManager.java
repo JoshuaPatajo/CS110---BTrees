@@ -158,10 +158,10 @@ public class BTreeManager {
 		public void insert( long newKey , long newOffset, boolean split ) throws IOException {
 			
 			// If there are children nodes where the new element can be inserted, try to insert them there.
-			System.out.println(countChildren());
 			if ( countChildren() > 0 && split == false) {
 				
 				int cc = countChildren();
+				System.out.println(cc);
 
 				for(int i = 0; i < cc; i++)
 				{
@@ -173,7 +173,13 @@ public class BTreeManager {
 					}
 					else
 					{
-						if(i == cc - 1)
+						if(cc == ORDER - 1 && countElements() == ORDER - 1)
+						{
+							Node childNode = new Node( child[ ORDER - 1 ] , false );
+							childNode.insert( newKey , newOffset , false );
+							break;
+						}
+						else if(i == cc - 1)
 						{
 							Node childNode = new Node( child[ i ] , false );
 							childNode.insert( newKey , newOffset , false );
@@ -223,7 +229,6 @@ public class BTreeManager {
 				
 				// Check if this node is full i.e. there are ORDER offsets in this node. If it is full , split this node.
 				if ( countElements() == ORDER ) {
-					System.out.println("SPLIT");
 					split();
 				}
 				
@@ -260,7 +265,7 @@ public class BTreeManager {
 				// Insert the elements greater than the median into the sister node. Remove those elements from this node. If any children are attached to the keys in the sister node, transfer those too.
 				for ( int i = median + 1 ; i < ORDER ; i++ ) {
 					
-					newSisterNode.insert( keys[ i ] , offsets[ i ] , false );
+					newSisterNode.insert( keys[ i ] , offsets[ i ] , true );
 					
 					key[ i ] = -1;
 					offset[ i ] = -1;
@@ -275,7 +280,7 @@ public class BTreeManager {
 				}
 				
 				// if there is no parent node to take the median, create a new root node and set this one as its child
-				if ( parent == -1 ) {
+				if ( parent == -1 || parent == 0) {
 					
 					// Also set the sister node's parent to the new root node.
 					newSisterNode.setParent( newStart + ( NODE_LENGTH * 8 ) );
@@ -416,7 +421,6 @@ public class BTreeManager {
 			
 			// Go through each key in the node.
 			for ( int i = 0 ; i < ORDER - 1 ; i++ ) {
-				
 				// If key is in the node, return the offset associated with that key.
 				if ( key[ i ] == keyToFind ) {
 					return offset[ i ];
@@ -429,10 +433,7 @@ public class BTreeManager {
 						Node childNode = new Node( child[ i ] , false );
 						return childNode.select( keyToFind );
 						
-					} else {
-						return -1;
-					}
-					
+					}					
 				}
 				// At this point, the key either doesn't exist in the tree, or it is in the last child node. All valid keys will have been checked when i is countElements() + 1.
 				else if( i == countElements() - 1) {
@@ -444,10 +445,7 @@ public class BTreeManager {
 						Node childNode = new Node( child[ countElements() ] , false );
 						return childNode.select( keyToFind );
 						
-					} else {
-						return -1;
-					}
-					
+					} 
 				}
 				
 			}
@@ -564,7 +562,6 @@ public class BTreeManager {
 				parentNode.writeNodes();
 				
 			} */
-			
 		}
 
 		public void load(long[] data) throws IOException
