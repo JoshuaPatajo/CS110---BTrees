@@ -69,7 +69,7 @@ public class BTreeManager {
 	
 	public void insert( long key , long offset ) throws IOException {
 		
-		getRoot().insert( key , offset );
+		getRoot().insert( key , offset , false);
 		
 	}
 	
@@ -155,29 +155,31 @@ public class BTreeManager {
 			
 		}
 		
-		public void insert( long newKey , long newOffset ) throws IOException {
+		public void insert( long newKey , long newOffset, boolean split ) throws IOException {
 			
 			// If there are children nodes where the new element can be inserted, try to insert them there.
-			if ( countChildren() > 0 ) {
+			System.out.println(countChildren());
+			if ( countChildren() > 0 && split == false) {
 				
-				// Check each key in this node. The child node that should be checked is the largest one that appears before the smallest key that is greater than the newKey.
-				for ( int i = 0 ; i < ORDER ; i++ ) {
-					
-					if ( key[ i ] > newKey ) {
-						
+				int cc = countChildren();
+
+				for(int i = 0; i < cc; i++)
+				{
+					if(key[i] > newKey)
+					{
 						Node childNode = new Node( child[ i ] , false );
-						childNode.insert( newKey , newOffset );
+						childNode.insert( newKey , newOffset , false );
 						break;
-						
 					}
-					else if ( key [ i ] < newKey ) {
-						
-						Node childNode = new Node( child[ i + 1 ] , false );
-						childNode.insert( newKey , newOffset );
-						break;
-						
+					else
+					{
+						if(i == cc - 1)
+						{
+							Node childNode = new Node( child[ i ] , false );
+							childNode.insert( newKey , newOffset , false );
+							break;
+						}
 					}
-					
 				}
 				
 			}
@@ -204,8 +206,6 @@ public class BTreeManager {
 				
 					// Count the number of elements that need to be sorted.
 					int numElem = countElements();
-
-					System.out.println("HI");
 					
 					// I used Bubble Sort. Mostly because I like the word "bubble"
 					for(int i = numElem - 1; i > 0; i--)
@@ -222,7 +222,8 @@ public class BTreeManager {
 					}
 				
 				// Check if this node is full i.e. there are ORDER offsets in this node. If it is full , split this node.
-				if ( countElements() >= ORDER ) {
+				if ( countElements() == ORDER ) {
+					System.out.println("SPLIT");
 					split();
 				}
 				
@@ -235,7 +236,7 @@ public class BTreeManager {
 		
 		public void split() throws IOException {
 			
-			// SET-UP
+			// SET-UP child
 			
 				// Keep track of the original values in this node. Around half will be removed.
 				long[] keys = key;
@@ -259,7 +260,7 @@ public class BTreeManager {
 				// Insert the elements greater than the median into the sister node. Remove those elements from this node. If any children are attached to the keys in the sister node, transfer those too.
 				for ( int i = median + 1 ; i < ORDER ; i++ ) {
 					
-					newSisterNode.insert( keys[ i ] , offsets[ i ] );
+					newSisterNode.insert( keys[ i ] , offsets[ i ] , false );
 					
 					key[ i ] = -1;
 					offset[ i ] = -1;
@@ -283,7 +284,7 @@ public class BTreeManager {
 					Node newRootNode = new Node( newStart + ( NODE_LENGTH * 8 ) , true );
 					
 					// Insert the median in the parent node. Remove it from this node.
-					newRootNode.insert( keys[ median ] , offsets[ median ] );
+					newRootNode.insert( keys[ median ] , offsets[ median ] , false );
 					key[ median ] = -1;
 					offset[ median ] = -1;
 					
@@ -314,19 +315,46 @@ public class BTreeManager {
 					Node parentNode = new Node( parent , false );
 					
 					// Insert the median into the parent node. Remove it from this node.
-					parentNode.insert( keys[ median ] , offsets[ median ] );
+					parentNode.insert( keys[ median ] , offsets[ median ] , true);
 					key[ median ] = -1;
 					offset[ median ] = -1;
 					
 					// Find out where in the parent node the median went. This node should go to the child slot that immediately precedes the median and the sister node should immediately come after the median.
-					int medianPos = findElement( keys[ median ] );
-					
+					int medianPos = parentNode.findElement( keys[ median ] );
+
+					if(medianPos == -1)
+					{
+						btree.seek(parentNode.getParent() + 16);
+						if(btree.readLong() == keys[median])
+						{
+							medianPos = 2;
+							parentNode.child[ medianPos ] = newStart;
+						}
+						else
+						{
+							long z = parentNode.getParent();
+							btree.seek(z + 8);
+							long x = btree.readLong();
+							btree.seek(x + 16);
+							long a = btree.readLong();
+
+							if(keys[median] == a)
+								newSisterNode.child[0] = newStart;
+							else
+								newSisterNode.child[1] = newStart;
+						}
+
+					}
+					else
+						parentNode.child[ medianPos ] = newStart;
+
+
 					// Indicate that the parent of the sister node is the same parent of this node.
 					newSisterNode.setParent( parent );
-					
-					// Unlike in the other case, it is possible that an existing parent node already has children. The nodes in this split go in these locations specifically.
-					parentNode.child[ medianPos ] = position;
-					parentNode.child[ medianPos + 1 ] = newStart;
+		
+					numNodes++;
+					btree.seek( 0 );
+					btree.writeLong( numNodes );
 					
 					parentNode.writeNodes();
 					newSisterNode.writeNodes();
@@ -407,7 +435,7 @@ public class BTreeManager {
 					
 				}
 				// At this point, the key either doesn't exist in the tree, or it is in the last child node. All valid keys will have been checked when i is countElements() + 1.
-				else if( i == countElements() ) {
+				else if( i == countElements() - 1) {
 					
 					// Check that this node's last child exists. If it doesn't, then the key cannot be in this tree. If it does exist, check it for the key.
 					
@@ -427,6 +455,11 @@ public class BTreeManager {
 			return -1;
 			
 		}	
+
+		public long getParent()
+		{
+			return parent;
+		}
 		/**
 		 * 
 		 * Counts the number of elements in this node. Elements refers to a combination of key and offset. The maximum number a node is allowed to have is one less than the ORDER of the BTree. If the count exceeds this limit, the node is split into multiple nodes.
