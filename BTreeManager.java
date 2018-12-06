@@ -13,6 +13,7 @@ public class BTreeManager {
 	
 	private final int ORDER = 5;
 	private final int NODE_LENGTH = 3 * ORDER - 1;
+	private Node[] nodeList;
 	
 	public BTreeManager() {}
 	
@@ -28,6 +29,7 @@ public class BTreeManager {
 			btree.seek( 0 );
 			nodeCount = btree.readLong();
 			rootNodePos = btree.readLong();
+			loadNodes();
 		
 		}
 		else {
@@ -79,6 +81,29 @@ public class BTreeManager {
 		
 		return output;
 		
+	}
+
+	public void loadNodes() throws IOException
+	{
+		nodeList = new Node[(int)nodeCount];
+		for(int i = 0; i < nodeCount; i++)
+		{
+			System.out.println(i + ": ");
+			long pos = 16 + (i * 8 * NODE_LENGTH);
+			btree.seek(pos);
+			long[] data = new long[NODE_LENGTH];
+			for(int j = 0; j < NODE_LENGTH; j++)
+			{
+				try
+				{
+					data[j] = btree.readLong();
+					System.out.print(data[j] + " ");
+				}
+				catch (EOFException e) {}
+			}
+			nodeList[i] = new Node(pos, false);
+			nodeList[i].load(data);
+		}
 	}
 	
 	class Node
@@ -515,6 +540,18 @@ public class BTreeManager {
 				
 			} */
 			
+		}
+
+		public void load(long[] data) throws IOException
+		{
+			parent = data[0];
+			for(int i = 0; i < ORDER - 1; i++)
+			{
+				child[i] = data[1 + (i * 3)];
+				key[i] = data[2 + (i * 3)];
+				offset[i] = data[3 + (i * 3)];
+			}
+			child[ORDER - 1] = data[NODE_LENGTH - 1];
 		}
 		
 	}
