@@ -204,26 +204,21 @@ public class BTreeManager {
 				
 					// Count the number of elements that need to be sorted.
 					int numElem = countElements();
+
+					System.out.println("HI");
 					
 					// I used Bubble Sort. Mostly because I like the word "bubble"
-					for( int i = numElem - 1 ; i >= 1 ; i-- ) {
-						
-						for ( int j = 1 ; j < i ; j++ ) {
-							
-							if ( key[ j ] > key[ j + 1 ] ) {
-								
-								long temp = key[ j ];
-								key[ j ] = key[ j + 1 ];
-								key[ j + 1 ] = temp;
-								
-								temp = offset[ j ];
-								offset[ j ] = offset[ j + 1 ];
-								offset[ j + 1 ] = temp;
-								
+					for(int i = numElem - 1; i > 0; i--)
+					{
+						for(int j = 0; j < i; j++)
+						{
+							if(key[j] > key[j+1])
+							{
+								long temp = key[j+1];
+								key[j+1] = key[j];
+								key[j] = temp;
 							}
-							
 						}
-						
 					}
 				
 				// Check if this node is full i.e. there are ORDER offsets in this node. If it is full , split this node.
