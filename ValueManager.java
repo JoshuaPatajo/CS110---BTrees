@@ -63,9 +63,9 @@ public class ValueManager {
 		
 	}
 	
-	public void update( String newEntry , long offset ) throws IOException {
+	public void update( long offset , String newEntry ) throws IOException {
 		
-		values.seek( 8 + offset * COMPLETE_ENTRY );
+		values.seek( offset );
 		values.writeShort( newEntry.length() );
 		values.writeBytes( newEntry );
 		
